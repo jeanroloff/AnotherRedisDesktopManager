@@ -1,0 +1,90 @@
+name: Build Internal Distribution
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Build version tag (optional)'
+        required: false
+        default: ''
+
+jobs:
+  build-macos-intel:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 16
+        uses: actions/setup-node@v4
+        with:
+          node-version: 16
+      - run: npm ci
+      - run: npm run pack:prepare
+      - name: Adjust build config for unsigned internal build
+        run: |
+          jq 'del(.build.afterSign) | .build.mac.target[0].arch = ["x64"]' dist/package.json > dist/package.json.tmp
+          mv dist/package.json.tmp dist/package.json
+      - name: Build Mac Intel
+        run: npx electron-builder --project=dist -m -p never
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-macos-intel
+          path: dist/build-apps/*
+
+  build-macos-arm:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 16
+        uses: actions/setup-node@v4
+        with:
+          node-version: 16
+      - run: npm ci
+      - run: npm run pack:prepare
+      - name: Adjust build config for unsigned internal build
+        run: |
+          jq 'del(.build.afterSign) | .build.mac.target[0].arch = ["arm64"]' dist/package.json > dist/package.json.tmp
+          mv dist/package.json.tmp dist/package.json
+      - name: Build Mac ARM
+        run: npx electron-builder --project=dist -m -p never
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-macos-arm
+          path: dist/build-apps/*
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 16
+        uses: actions/setup-node@v4
+        with:
+          node-version: 16
+      - run: npm ci
+      - run: npm run pack:prepare
+      - name: Build Windows
+        run: npm run pack:win
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-windows
+          path: dist/build-apps/*
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 16
+        uses: actions/setup-node@v4
+        with:
+          node-version: 16
+      - run: npm ci
+      - run: npm run pack:prepare
+      - name: Build Linux
+        run: npm run pack:linux
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-linux
+          path: dist/build-apps/*
