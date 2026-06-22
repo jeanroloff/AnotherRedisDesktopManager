@@ -25,17 +25,17 @@
     <div class="config-section">
       <div class="config-row">
         <span class="config-label">Preset:</span>
-        <el-select v-model="preset" @change="applyPreset" size="mini" style="width: 200px;">
-          <el-option label="horizon:job:*" value="horizon"></el-option>
-          <el-option label="{horizon}:job:*" value="brace"></el-option>
+        <el-select v-model="preset" @change="applyPreset" size="mini" style="width: 160px;">
+          <el-option label="horizon:*" value="horizon"></el-option>
+          <el-option label="{horizon}:*" value="brace"></el-option>
           <el-option label="Custom" value="custom"></el-option>
         </el-select>
         <span class="config-label" style="margin-left: 16px;">Hash Pattern:</span>
-        <el-input v-model="hashPattern" size="mini" placeholder="horizon:job:*" style="width: 200px;"></el-input>
+        <el-input v-model="hashPattern" size="mini" placeholder="horizon:*" style="width: 200px;"></el-input>
       </div>
       <div class="config-row" style="margin-top: 8px;">
         <span class="config-label">ID Prefix:</span>
-        <el-input v-model="idPrefix" size="mini" placeholder="horizon:job:" style="width: 200px;"></el-input>
+        <el-input v-model="idPrefix" size="mini" placeholder="horizon:" style="width: 200px;"></el-input>
         <span class="config-label" style="margin-left: 16px;">Reference ZSets:</span>
         <el-input v-model="zsetKeysInput" size="mini" placeholder="horizon:recent_jobs,horizon:failed_jobs" style="width: 320px;"></el-input>
         <el-tooltip content="Comma-separated list of ZSet keys">
@@ -78,8 +78,8 @@ export default {
       orphanList: [],
       scannedCount: 0,
       preset: 'horizon',
-      hashPattern: 'horizon:job:*',
-      idPrefix: 'horizon:job:',
+      hashPattern: 'horizon:*',
+      idPrefix: 'horizon:',
       zsetKeysInput: 'horizon:recent_jobs,horizon:failed_jobs,horizon:completed_jobs,horizon:silenced_jobs',
       scanPageSize: 2000,
       scanMax: 200000,
@@ -104,13 +104,13 @@ export default {
     applyPreset(val) {
       const presets = {
         horizon: {
-          hashPattern: 'horizon:job:*',
-          idPrefix: 'horizon:job:',
+          hashPattern: 'horizon:*',
+          idPrefix: 'horizon:',
           zsetKeysInput: 'horizon:recent_jobs,horizon:failed_jobs,horizon:completed_jobs,horizon:silenced_jobs',
         },
         brace: {
-          hashPattern: '{horizon}:job:*',
-          idPrefix: '{horizon}:job:',
+          hashPattern: '{horizon}:*',
+          idPrefix: '{horizon}:',
           zsetKeysInput: '{horizon}:recent_jobs,{horizon}:failed_jobs,{horizon}:completed_jobs,{horizon}:silenced_jobs',
         },
       };

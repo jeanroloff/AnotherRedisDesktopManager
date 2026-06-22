@@ -59,6 +59,9 @@
         <el-dropdown-item @click.native='horizonOrphan'>
           <span><i class='more-operate-ico fa fa-stethoscope'></i>&nbsp;Horizon Orphan Detector</span>
         </el-dropdown-item>
+        <el-dropdown-item @click.native='horizonHeavyJobs'>
+          <span><i class='more-operate-ico fa fa-balance-scale'></i>&nbsp;Horizon Heavy Jobs</span>
+        </el-dropdown-item>
         <el-dropdown-item @click.native='slowLog'>
           <span><i class='more-operate-ico fa fa-hourglass-start'></i>&nbsp;{{ $t('message.slow_log') }}</span>
         </el-dropdown-item>
@@ -241,6 +244,13 @@ export default {
       }
 
       this.$bus.$emit('horizonOrphan', this.client, this.config.connectionName);
+    },
+    horizonHeavyJobs() {
+      if (!this.client) {
+        return;
+      }
+
+      this.$bus.$emit('horizonHeavyJobs', this.client, this.config.connectionName);
     },
     slowLog() {
       if (!this.client) {
