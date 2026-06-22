@@ -56,6 +56,9 @@
         <el-dropdown-item @click.native='memoryAnalisys'>
           <span><i class='more-operate-ico fa fa-table'></i>&nbsp;{{ $t('message.memory_analysis') }}</span>
         </el-dropdown-item>
+        <el-dropdown-item @click.native='horizonOrphan'>
+          <span><i class='more-operate-ico fa fa-stethoscope'></i>&nbsp;Horizon Orphan Detector</span>
+        </el-dropdown-item>
         <el-dropdown-item @click.native='slowLog'>
           <span><i class='more-operate-ico fa fa-hourglass-start'></i>&nbsp;{{ $t('message.slow_log') }}</span>
         </el-dropdown-item>
@@ -231,6 +234,13 @@ export default {
       }
 
       this.$bus.$emit('memoryAnalysis', this.client, this.config.connectionName);
+    },
+    horizonOrphan() {
+      if (!this.client) {
+        return;
+      }
+
+      this.$bus.$emit('horizonOrphan', this.client, this.config.connectionName);
     },
     slowLog() {
       if (!this.client) {

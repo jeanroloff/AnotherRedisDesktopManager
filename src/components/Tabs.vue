@@ -14,6 +14,7 @@
         <CliTab v-else-if="item.component === 'cli'" :client='item.client' class='tab-content-wrappe' :hotKeyScope='item.name'></CliTab>
         <DeleteBatch v-else-if="item.component === 'delbatch'" :client='item.client' :rule="item.rule" class='tab-content-wrappe' :hotKeyScope='item.name'></DeleteBatch>
         <MemoryAnalysis v-else-if="item.component === 'memory'" :client='item.client' :pattern="item.pattern" class='tab-content-wrappe' :hotKeyScope='item.name'></MemoryAnalysis>
+        <HorizonOrphanDetector v-else-if="item.component === 'horizon'" :client='item.client' class='tab-content-wrappe' :hotKeyScope='item.name'></HorizonOrphanDetector>
         <SlowLog v-else-if="item.component === 'slowlog'" :client='item.client' class='tab-content-wrappe' :hotKeyScope='item.name'></SlowLog>
         <KeyDetail v-else :client='item.client' :redisKey="item.redisKey" :keyType="item.keyType" class='tab-content-wrappe' :hotKeyScope='item.name'></KeyDetail>
       </el-tab-pane>
@@ -36,6 +37,7 @@ import CliTab from '@/components/CliTab';
 import KeyDetail from '@/components/KeyDetail';
 import DeleteBatch from '@/components/DeleteBatch';
 import MemoryAnalysis from '@/components/MemoryAnalysis';
+import HorizonOrphanDetector from '@/components/HorizonOrphanDetector';
 import SlowLog from '@/components/SlowLog';
 
 export default {
@@ -46,7 +48,7 @@ export default {
     };
   },
   components: {
-    Status, KeyDetail, CliTab, DeleteBatch, MemoryAnalysis, SlowLog,
+    Status, KeyDetail, CliTab, DeleteBatch, MemoryAnalysis, HorizonOrphanDetector, SlowLog,
   },
   watch: {
     selectedTabName(value) {
@@ -78,6 +80,11 @@ export default {
     // open memory anaysis tab
     this.$bus.$on('memoryAnalysis', (client, tabName, pattern = '') => {
       this.addMemoryTab(client, tabName, pattern);
+    });
+
+    // open horizon orphan detector tab
+    this.$bus.$on('horizonOrphan', (client, tabName) => {
+      this.addHorizonTab(client, tabName);
     });
 
     // open slowlog tab
@@ -183,6 +190,17 @@ export default {
 
       this.addTab(newTabItem, true);
     },
+    addHorizonTab(client, tabName) {
+      const newTabItem = {
+        name: `horizon_${tabName}_${Math.random()}`,
+        label: this.$util.cutString(tabName),
+        title: tabName,
+        client,
+        component: 'horizon',
+      };
+
+      this.addTab(newTabItem, true);
+    },
     addSlowLogTab(client, tabName) {
       const newTabItem = {
         name: `slowlog_${tabName}_${Math.random()}`,
@@ -277,6 +295,7 @@ export default {
         status: 'el-icon-info',
         delbatch: 'el-icon-delete',
         memory: 'fa fa-table',
+        horizon: 'fa fa-stethoscope',
         slowlog: 'fa fa-hourglass-start',
       };
 
