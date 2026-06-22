@@ -211,7 +211,7 @@ export default {
       retryStrategy: times => this.retryStragety(times, { host, port }),
       enableReadyCheck: false,
       connectionName: config.connectionName ? config.connectionName.replace(/[^a-zA-Z0-9_-]/g, '_') : null,
-      password: auth,
+      password: auth || undefined,
       db: config.db ? config.db : undefined,
       // ACL support
       username: config.username ? config.username : undefined,
@@ -225,8 +225,8 @@ export default {
   getSentinelOptions(host, port, auth, config) {
     return {
       sentinels: [{ host, port }],
-      sentinelPassword: auth,
-      password: config.sentinelOptions.nodePassword,
+      sentinelPassword: auth || undefined,
+      password: config.sentinelOptions.nodePassword || undefined,
       name: config.sentinelOptions.masterName,
       connectTimeout: 30000,
       retryStrategy: times => this.retryStragety(times, { host, port }),
