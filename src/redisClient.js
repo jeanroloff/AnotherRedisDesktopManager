@@ -210,7 +210,7 @@ export default {
       connectTimeout: 30000,
       retryStrategy: times => this.retryStragety(times, { host, port }),
       enableReadyCheck: false,
-      connectionName: config.connectionName ? config.connectionName : null,
+      connectionName: config.connectionName ? config.connectionName.replace(/[^a-zA-Z0-9_-]/g, '_') : null,
       password: auth,
       db: config.db ? config.db : undefined,
       // ACL support

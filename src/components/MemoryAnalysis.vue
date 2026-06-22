@@ -20,6 +20,8 @@
 
       <span class="analysis-title">{{ $t('message.memory_analysis') }}</span>
       <i v-if="isScanning" class='el-icon-loading'></i>
+      <el-tag v-if="memoryCommandDisabled" type="warning" size="mini">MEMORY disabled</el-tag>
+      <el-tag v-if="useDumpFallback" type="info" size="mini">~DUMP estimate</el-tag>
       <el-tag size="mini">
         Total: {{keysList.length}} &nbsp;
         Size: {{$util.humanFileSize(totalSize)}}
@@ -47,6 +49,9 @@
         <span class="header-title">Size</span>
         <span class="el-icon-d-caret"></span>
       </span>
+      <span class="type-container">
+        <span class="header-title">Type</span>
+      </span>
     </div>
 
     <!-- keys list -->
@@ -60,9 +65,11 @@
       <li @click="clickJump(item)">
         <span class="list-index">{{ index + 1 }}.</span>
         <span class="key-name" :title="item.str">{{ item.str }}</span>
-        <!-- <span class="size">{{ item.human }}</span> -->
+        <span class="key-type">
+          <el-tag size="mini" type="info">{{ item.type }}</el-tag>
+        </span>
         <span class="size">
-          <el-tag size="mini">{{ item.human }}</el-tag>
+          <el-tag size="mini" :type="item.tagType || ''" :title="item.errMsg || ''">{{ item.human }}</el-tag>
         </span>
       </li>
     </RecycleScroller>
@@ -90,6 +97,8 @@ export default {
       scanPageSize: 2000,
       totalSize: 0,
       minSizeKB: 0,
+      memoryCommandDisabled: false,
+      useDumpFallback: false,
     };
   },
   props: ['client', 'hotKeyScope', 'pattern'],
@@ -103,6 +112,8 @@ export default {
     initKeys() {
       this.keysList = [];
       this.totalSize = 0;
+      this.memoryCommandDisabled = false;
+      this.useDumpFallback = false;
       this.isScanning = true;
       this.scanningEnd = false;
       this.initScanStreamsAndScan(this.pattern ? this.pattern : '');
@@ -143,7 +154,7 @@ export default {
             }, 100);
 
             // size count
-            this.totalSize += keysWithMemory.reduce((sum, item) => sum + parseInt(item.size), 0);
+            this.totalSize += keysWithMemory.reduce((sum, item) => sum + (parseInt(item.size, 10) || 0), 0);
           });
         });
 
@@ -172,17 +183,44 @@ export default {
       for (const key of keys) {
         // not logging
         this.client.withoutLogging = true;
-        const promise = this.client.call('MEMORY', 'USAGE', key).then((reply) => {
-          // filter min size
-          if (this.minSizeB && reply < this.minSizeB) {
+        const promise = this.fetchKeySize(key).then((result) => {
+          if (!result) {
             return;
           }
+
+          // filter min size
+          if (this.minSizeB && result.size < this.minSizeB) {
+            return;
+          }
+
           keysWithMemory.push({
-            key, str: this.$util.bufToString(key), size: reply, human: this.$util.humanFileSize(reply),
+            key,
+            str: this.$util.bufToString(key),
+            size: result.size,
+            human: result.human,
+            type: result.type,
+            isEstimate: result.isEstimate || false,
           });
         }).catch((e) => {
+          const rawErr = (e && e.message) ? e.message : '';
+          const errMsg = rawErr.toLowerCase();
+          const isCmdDisabled = errMsg.includes('unknown command') || errMsg.includes('disabled') || errMsg.includes('not supported') || errMsg.includes('noperm');
+
+          if (isCmdDisabled && !this.memoryCommandDisabled) {
+            this.memoryCommandDisabled = true;
+            this.$message.warning(this.$t('message.memory_command_disabled') || 'MEMORY command is disabled or not supported on this Redis server.');
+          }
+
+          console.error(`[MemoryAnalysis] Size fetch failed for key "${this.$util.bufToString(key)}":`, rawErr);
+
           keysWithMemory.push({
-            key, str: this.$util.bufToString(key), size: 0, human: 0,
+            key,
+            str: this.$util.bufToString(key),
+            size: 0,
+            human: isCmdDisabled ? 'N/A' : 'Err',
+            type: '-',
+            tagType: isCmdDisabled ? 'info' : 'danger',
+            errMsg: rawErr,
           });
         });
 
@@ -190,6 +228,71 @@ export default {
       }
 
       return Promise.all(allPromise);
+    },
+    fetchKeySize(key) {
+      const typePromise = this.client.call('TYPE', key).catch(() => '');
+
+      const sizePromise = (() => {
+        // If we already know MEMORY is blocked, use DUMP directly
+        if (this.useDumpFallback) {
+          return this.client.call('DUMP', key).then((dumpReply) => {
+            if (!dumpReply) {
+              return null;
+            }
+            const size = dumpReply.length;
+            return {
+              size,
+              human: '~' + this.$util.humanFileSize(size),
+              isEstimate: true,
+            };
+          });
+        }
+
+        return this.client.call('MEMORY', 'USAGE', key).then((reply) => {
+          // key deleted between scan and memory usage
+          if (reply === null || reply === undefined) {
+            return null;
+          }
+
+          const size = parseInt(reply, 10) || 0;
+          return {
+            size,
+            human: this.$util.humanFileSize(size),
+            isEstimate: false,
+          };
+        }).catch((e) => {
+          const rawErr = (e && e.message) ? e.message : '';
+          const errMsg = rawErr.toLowerCase();
+          const isMemoryBlocked = errMsg.includes('memory|usage') || errMsg.includes("no permissions to run the 'memory");
+
+          if (isMemoryBlocked) {
+            this.useDumpFallback = true;
+            return this.client.call('DUMP', key).then((dumpReply) => {
+              if (!dumpReply) {
+                return null;
+              }
+              const size = dumpReply.length;
+              return {
+                size,
+                human: '~' + this.$util.humanFileSize(size),
+                isEstimate: true,
+              };
+            });
+          }
+
+          throw e;
+        });
+      })();
+
+      return Promise.all([sizePromise, typePromise]).then(([sizeResult, typeReply]) => {
+        if (!sizeResult) {
+          return null;
+        }
+        return {
+          ...sizeResult,
+          type: typeReply,
+        };
+      });
     },
     clickJump(item) {
       this.$bus.$emit('clickedKey', this.client, item.key, true);
@@ -281,6 +384,10 @@ export default {
     float: right;
     cursor: pointer;
   }
+  .memory-analysis-container .keys-header .type-container {
+    float: right;
+    margin-right: 12px;
+  }
 
   /*keys body list*/
   .memory-analysis-container .keys-body {
@@ -315,11 +422,21 @@ export default {
     white-space: nowrap;
   }
 
+  /*key type*/
+  .memory-analysis-container .keys-body .key-type {
+    min-width: 60px;
+    text-align: center;
+    margin-left: 10px;
+    margin-right: 10px;
+  }
   /*key size*/
   .memory-analysis-container .keys-body .size {
     /*font-size: 90%;*/
     margin-left: 20px;
     margin-right: 4px;
+    min-width: 85px;
+    text-align: right;
+    white-space: nowrap;
   }
 
   /*keys footer*/
