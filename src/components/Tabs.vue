@@ -16,6 +16,7 @@
         <MemoryAnalysis v-else-if="item.component === 'memory'" :client='item.client' :pattern="item.pattern" class='tab-content-wrappe' :hotKeyScope='item.name'></MemoryAnalysis>
         <HorizonOrphanDetector v-else-if="item.component === 'horizon'" :client='item.client' class='tab-content-wrappe' :hotKeyScope='item.name'></HorizonOrphanDetector>
         <HorizonHeavyJobs v-else-if="item.component === 'horizonHeavy'" :client='item.client' class='tab-content-wrappe' :hotKeyScope='item.name'></HorizonHeavyJobs>
+        <HorizonJobFilter v-else-if="item.component === 'horizonFilter'" :client='item.client' class='tab-content-wrappe' :hotKeyScope='item.name'></HorizonJobFilter>
         <SlowLog v-else-if="item.component === 'slowlog'" :client='item.client' class='tab-content-wrappe' :hotKeyScope='item.name'></SlowLog>
         <KeyDetail v-else :client='item.client' :redisKey="item.redisKey" :keyType="item.keyType" class='tab-content-wrappe' :hotKeyScope='item.name'></KeyDetail>
       </el-tab-pane>
@@ -40,6 +41,7 @@ import DeleteBatch from '@/components/DeleteBatch';
 import MemoryAnalysis from '@/components/MemoryAnalysis';
 import HorizonOrphanDetector from '@/components/HorizonOrphanDetector';
 import HorizonHeavyJobs from '@/components/HorizonHeavyJobs';
+import HorizonJobFilter from '@/components/HorizonJobFilter';
 import SlowLog from '@/components/SlowLog';
 
 export default {
@@ -50,7 +52,7 @@ export default {
     };
   },
   components: {
-    Status, KeyDetail, CliTab, DeleteBatch, MemoryAnalysis, HorizonOrphanDetector, HorizonHeavyJobs, SlowLog,
+    Status, KeyDetail, CliTab, DeleteBatch, MemoryAnalysis, HorizonOrphanDetector, HorizonHeavyJobs, HorizonJobFilter, SlowLog,
   },
   watch: {
     selectedTabName(value) {
@@ -92,6 +94,11 @@ export default {
     // open horizon heavy jobs tab
     this.$bus.$on('horizonHeavyJobs', (client, tabName) => {
       this.addHorizonHeavyTab(client, tabName);
+    });
+
+    // open horizon job filter tab
+    this.$bus.$on('horizonJobFilter', (client, tabName) => {
+      this.addHorizonJobFilterTab(client, tabName);
     });
 
     // open slowlog tab
@@ -219,6 +226,17 @@ export default {
 
       this.addTab(newTabItem, true);
     },
+    addHorizonJobFilterTab(client, tabName) {
+      const newTabItem = {
+        name: `horizon_filter_${tabName}_${Math.random()}`,
+        label: this.$util.cutString(tabName),
+        title: tabName,
+        client,
+        component: 'horizonFilter',
+      };
+
+      this.addTab(newTabItem, true);
+    },
     addSlowLogTab(client, tabName) {
       const newTabItem = {
         name: `slowlog_${tabName}_${Math.random()}`,
@@ -315,6 +333,7 @@ export default {
         memory: 'fa fa-table',
         horizon: 'fa fa-stethoscope',
         horizonHeavy: 'fa fa-balance-scale',
+        horizonFilter: 'fa fa-filter',
         slowlog: 'fa fa-hourglass-start',
       };
 
